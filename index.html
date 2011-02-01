@@ -1,0 +1,630 @@
+<html>
+	<head>
+		<title>Plants.js</title>
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+		<style>body {
+    margin: 0;
+    padding: 0;
+    font: 14px/1.5 'Palatino Linotype', 'Book Antiqua', Palatino, FreeSerif, serif;
+    color: #252519;
+}
+a {
+    color: #252519;
+}
+a:hover {
+    text-decoration: underline;
+    color: #19469D;
+}
+p {
+    margin: 12px 0;
+}
+h1, h2, h3 {
+    margin: 0;
+    padding: 0;
+}
+table#source {
+    width: 100%;
+    border-collapse: collapse;
+}
+table#source td:first-child {
+    padding: 30px 40px 30px 40px;
+    vertical-align: top;
+}
+table#source td:first-child,
+table#source td:first-child pre {
+    width: 450px;
+}
+table#source td:last-child {
+    padding: 30px 0 30px 40px;
+    border-left: 1px solid #E5E5EE;
+    background: #F5F5FF;
+}
+table#source tr {
+    border-bottom: 1px solid #E5E5EE;
+}
+table#source tr.filename {
+    padding-top: 40px;
+    border-top: 1px solid #E5E5EE;
+}
+table#source tr.filename td:first-child {
+    text-transform: capitalize;
+}
+table#source tr.filename td:last-child {
+    font-size: 12px;
+}
+table#source tr.filename h2 {
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+}
+table#source tr.code h1,
+table#source tr.code h2,
+table#source tr.code h3 {
+    margin-top: 30px;
+    font-family: "Lucida Grande", "Helvetica Nueue", Arial, sans-serif;
+    font-size: 18px;
+}
+table#source tr.code h2 {
+    font-size: 16px;
+}
+table#source tr.code h3 {
+    font-size: 14px;
+}
+table#source tr.code ul {
+    margin: 15px 0 15px 35px;
+    padding: 0;
+}
+table#source tr.code ul li {
+    margin: 0;
+    padding: 1px 0;
+}
+table#source tr.code ul li p {
+    margin: 0;
+    padding: 0;
+}
+table#source tr.code td:first-child pre {
+    padding: 20px;
+}
+#ribbon {
+    position: fixed;
+    top: 0;
+    right: 0;
+}
+code .string { color: #219161; }
+code .regexp { color: #219161; }
+code .keyword { color: #954121; }
+code .number { color: #19469D; }
+code .comment { color: #bbb; }
+code .this { color: #19469D; }</style>
+		<script>
+			$(function(){
+				$('tr.code').hide();
+				$('tr.filename').toggle(function(){
+					$(this).nextUntil('.filename').fadeIn();
+				}, function(){
+					$(this).nextUntil('.filename').fadeOut();
+				});
+			});
+		</script>
+	</head>
+	<body>
+<table id="source"><tbody><tr><td><h1>Plants.js</h1><p>Plants.js is a JavaScript test runner intended for use with Node.  It works well with <a href="http://zombie.labnotes.org/">Zombie.js</a>.</p>
+
+<p>Get it at <a href="http://github.com/alexyoung/plants.js">github.com/alexyoung/plants.js</a></p>
+
+<h2>Installation</h2>
+
+<p>Installing the library with npm will make the <code>plants</code> command available:</p>
+
+<pre><code>  npm install plants.js</code></pre>
+
+<p>Now run tests like this:</p>
+
+<pre><code>  plants test/*.js</code></pre>
+
+<h2>Usage</h2>
+
+<p>Tests are written in the CommonJS module style:</p>
+
+<pre><code>  var assert = require('assert');
+
+  exports['test that tests run'] = function() {
+    assert.ok(true);
+  };</code></pre>
+
+<p>Setup and teardown is also supported:</p>
+
+<pre><code>  var assert = require('assert'),
+      counter = 0;
+
+  // Setup should run first
+  exports['setup'] = function() {
+    assert.equal(0, counter);
+  };
+
+  exports['test that tests run'] = function() {
+    counter++;
+    assert.ok(true);
+  };
+
+  exports['teardown'] = function() {
+    assert.equal(1, counter);
+  };</code></pre>
+
+<h2>Asynchronous Support</h2>
+
+<p>Some tests might take a while to run.  The <code>plants</code> object is passed into each test, and it includes a <code>defer</code> method which can be used to wait until previous tests have finished:</p>
+
+<pre><code>  var assert = require('assert'),
+      counter = 0;
+
+  // Setup should run first
+  exports['setup'] = function(plants) {
+    plants.defer(function(next) {
+      assert.equal(0, counter);
+      next();
+    });
+  };
+
+  exports['test asynchronously'] = function(plants) {
+    plants.defer(function(next) {
+      setTimeout(function() {
+        counter++;
+        assert.ok(true);
+        next();
+      }, 1000);
+    });
+  };
+
+  exports['teardown'] = function() {
+    assert.equal(1, counter);
+  };</code></pre></td><td></td></tr><tr class="filename"><td><h2 id="lib/plants.js"><a href="#">plants</a></h2></td><td>lib/plants.js</td></tr><tr class="code">
+<td class="docs">
+<p>Plants.js
+Copyright (C) 2011 Alex R. Young
+MIT Licensed
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="keyword">var</span> <span class="variable">util</span> = <span class="variable">require</span>(<span class="string">'util'</span>),
+    <span class="class">EventEmitter</span> = <span class="variable">require</span>(<span class="string">'events'</span>).<span class="class">EventEmitter</span>,
+    <span class="variable">_</span> = <span class="variable">require</span>(<span class="string">'underscore'</span>),
+    <span class="variable">logger</span>,
+    <span class="class">Tests</span>,
+    <span class="variable">printMessage</span>,
+    <span class="variable">colorize</span> = <span class="variable">true</span>,
+    <span class="variable">runner</span>,
+    <span class="variable">version</span> = <span class="string">'0.0.1'</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Print a message to the console.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message The message to print</p></li><li><p><strong>param</strong>: <em>String</em>  [className] The type of message: pass, fail</p></li><li><p><strong>param</strong>: <em>String</em>  [prefix] A symbol that should appear before the message</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">printMessage</span> = (<span class="keyword">function</span>() {
+  <span class="keyword">function</span> <span class="variable">messageTypeToColor</span>(<span class="variable">messageType</span>) {
+    <span class="keyword">switch</span> (<span class="variable">messageType</span>) {
+      <span class="keyword">case</span> <span class="string">'pass'</span>:
+        <span class="keyword">return</span> <span class="string">'32'</span>;
+      <span class="keyword">break</span>;
+
+      <span class="keyword">case</span> <span class="string">'fail'</span>:
+        <span class="keyword">return</span> <span class="string">'31'</span>;
+      <span class="keyword">break</span>;
+    }
+
+    <span class="keyword">return</span> <span class="string">''</span>;
+  }
+
+  <span class="keyword">return</span> <span class="keyword">function</span>(<span class="variable">message</span>, <span class="variable">messageType</span>, <span class="variable">prefix</span>) {
+    <span class="keyword">var</span> <span class="variable">col</span>      = <span class="variable">colorize</span> ? <span class="variable">messageTypeToColor</span>(<span class="variable">messageType</span>) : <span class="variable">false</span>;
+        <span class="variable">startCol</span> = <span class="variable">col</span> ? <span class="string">'\033['</span> + <span class="variable">col</span> + <span class="string">'m'</span> : <span class="string">''</span>,
+        <span class="variable">endCol</span>   = <span class="variable">col</span> ? <span class="string">'\033[0m'</span> : <span class="string">''</span>,
+    <span class="variable">console</span>.<span class="variable">log</span>(<span class="variable">startCol</span> + (<span class="variable">prefix</span> ? <span class="variable">prefix</span> + <span class="string">' '</span> : <span class="string">''</span>) + <span class="variable">message</span> + <span class="variable">endCol</span>);
+  };
+})();
+
+<span class="variable">logger</span> = {</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Display a message.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message The message to print</p></li><li><p><strong>param</strong>: <em>String</em>  [className] The type of message: pass, fail</p></li><li><p><strong>param</strong>: <em>String</em>  [prefix] A symbol that should appear before the message</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">display</span>: <span class="keyword">function</span>(<span class="variable">message</span>, <span class="variable">className</span>, <span class="variable">prefix</span>) {
+    <span class="variable">printMessage</span>(<span class="variable">message</span>, <span class="variable">className</span> || <span class="string">'trace'</span>, <span class="variable">prefix</span> || <span class="string">''</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Display an error.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message The message to print</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">error</span>: <span class="keyword">function</span>(<span class="variable">message</span>) {
+    <span class="variable">logger</span>.<span class="variable">display</span>(<span class="variable">message</span>, <span class="string">'error'</span>, <span class="string">'\u2620'</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Display a passed test with a message.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message The message to print</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">pass</span>: <span class="keyword">function</span>(<span class="variable">message</span>) {
+    <span class="variable">logger</span>.<span class="variable">display</span>(<span class="variable">message</span>, <span class="string">'pass'</span>, <span class="string">'\u2713'</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Display a failed test.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message The message to print</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">fail</span>: <span class="keyword">function</span>(<span class="variable">message</span>) {
+    <span class="variable">logger</span>.<span class="variable">display</span>(<span class="variable">message</span>, <span class="string">'fail'</span>, <span class="string">'\u2715'</span>);
+  }
+};
+
+<span class="keyword">function</span> <span class="class">TestRunner</span>() {
+  <span class="this">this</span>.<span class="variable">files</span> = [];
+  <span class="this">this</span>.<span class="variable">results</span> = [];
+  <span class="this">this</span>.<span class="variable">passed</span> = <span class="number integer">0</span>;
+  <span class="this">this</span>.<span class="variable">failed</span> = <span class="number integer">0</span>;
+  <span class="this">this</span>.<span class="variable">errors</span> = <span class="number integer">0</span>;
+  <span class="this">this</span>.<span class="variable">deferred</span> = <span class="number integer">0</span>;
+  <span class="this">this</span>.<span class="variable">events</span> = <span class="keyword">new</span> <span class="class">EventEmitter</span>();
+  <span class="this">this</span>.<span class="variable">testObject</span> = <span class="keyword">null</span>;
+  <span class="this">this</span>.<span class="variable">installEvents</span>();
+}
+
+<span class="class">TestRunner</span>.<span class="variable">prototype</span> = {</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Generates a test result with a name and message.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  testName The test's name</p></li><li><p><strong>returns</strong>: <em>Object</em>  An object with a name and message</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="class">Result</span>: <span class="keyword">function</span>(<span class="variable">testName</span>) {
+    <span class="keyword">return</span> { <span class="variable">name</span>: <span class="variable">testName</span>, <span class="variable">message</span>: <span class="keyword">null</span> };
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Get a list of test names for the current <code>testObject</code>.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>returns</strong>: <em>Array</em>  A list of test names</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">findTests</span>: <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="variable">_</span>(<span class="this">this</span>.<span class="variable">testObject</span>).<span class="variable">chain</span>()
+      .<span class="variable">map</span>(<span class="keyword">function</span>(<span class="variable">fn</span>, <span class="variable">name</span>) {
+        <span class="keyword">if</span> (<span class="regexp">/^test/i</span>.<span class="variable">test</span>(<span class="variable">name</span>)) <span class="keyword">return</span> <span class="variable">name</span>;
+      })
+      .<span class="variable">compact</span>()
+      .<span class="variable">value</span>();
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Sets up the events required by tests.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">installEvents</span>: <span class="keyword">function</span>() {
+    <span class="this">this</span>.<span class="variable">on</span>(<span class="string">'setup'</span>, <span class="variable">_</span>.<span class="variable">bind</span>(<span class="this">this</span>.<span class="variable">runSetup</span>, <span class="this">this</span>));
+    <span class="this">this</span>.<span class="variable">on</span>(<span class="string">'teardown'</span>, <span class="variable">_</span>.<span class="variable">bind</span>(<span class="this">this</span>.<span class="variable">runTeardown</span>, <span class="this">this</span>));
+    <span class="this">this</span>.<span class="variable">on</span>(<span class="string">'next'</span>, <span class="variable">_</span>.<span class="variable">bind</span>(<span class="this">this</span>.<span class="variable">runNext</span>, <span class="this">this</span>));
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs the next test if there are no deferred functions.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">nextIfNotDeferred</span>: <span class="keyword">function</span>() {
+    <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">deferred</span> === <span class="number integer">0</span>) <span class="this">this</span>.<span class="variable">emit</span>(<span class="string">'next'</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs the next test.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">runNext</span>: <span class="keyword">function</span>() {
+    <span class="keyword">if</span> (!<span class="this">this</span>.<span class="variable">tests</span>) <span class="keyword">return</span>;
+
+    <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">tests</span>.<span class="variable">length</span> &<span class="variable">gt</span>; <span class="number integer">0</span>) {
+      <span class="keyword">var</span> <span class="variable">testName</span> = <span class="this">this</span>.<span class="variable">tests</span>.<span class="variable">shift</span>();
+      <span class="this">this</span>.<span class="variable">run</span>(<span class="variable">testName</span>);
+      <span class="this">this</span>.<span class="variable">nextIfNotDeferred</span>();
+    } <span class="keyword">else</span> {
+      <span class="this">this</span>.<span class="variable">emit</span>(<span class="string">'teardown'</span>);
+    }
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs the <code>setup</code> function if it's present, then the next test.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">runSetup</span>: <span class="keyword">function</span>() {
+    <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">testObject</span>.<span class="variable">hasOwnProperty</span>(<span class="string">'setup'</span>))
+      <span class="this">this</span>.<span class="variable">testObject</span>.<span class="variable">setup</span>(<span class="this">this</span>);
+    <span class="this">this</span>.<span class="variable">nextIfNotDeferred</span>();
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs the <code>teardown</code> function if it's present.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">runTeardown</span>: <span class="keyword">function</span>() {
+    <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">testObject</span>.<span class="variable">hasOwnProperty</span>(<span class="string">'teardown'</span>))
+      <span class="this">this</span>.<span class="variable">testObject</span>.<span class="variable">teardown</span>(<span class="this">this</span>);
+    <span class="this">this</span>.<span class="variable">emit</span>(<span class="string">'end'</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Sets the current <code>testObject</code>, then emits <code>setup</code>.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">runTestObject</span>: <span class="keyword">function</span>(<span class="variable">obj</span>) {
+    <span class="this">this</span>.<span class="variable">testObject</span> = <span class="variable">obj</span>;
+    <span class="this">this</span>.<span class="variable">tests</span> = <span class="this">this</span>.<span class="variable">findTests</span>();
+    <span class="this">this</span>.<span class="variable">emit</span>(<span class="string">'setup'</span>);
+  },
+
+  <span class="variable">toString</span>: <span class="keyword">function</span>() {
+    <span class="keyword">return</span> <span class="variable">util</span>.<span class="variable">inspect</span>(<span class="this">this</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Convenience accessor for the events object.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">emit</span>: <span class="keyword">function</span>(<span class="variable">name</span>) {
+    <span class="this">this</span>.<span class="variable">events</span>.<span class="variable">emit</span>(<span class="variable">name</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Convenience accessor for the events object.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">on</span>: <span class="keyword">function</span>() {
+    <span class="this">this</span>.<span class="variable">events</span>.<span class="variable">on</span>.<span class="variable">apply</span>(<span class="this">this</span>.<span class="variable">events</span>, <span class="variable">arguments</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs a test in the current <code>testObject</code>, will call itself
+recursively if the test is an object that contains sub-tests.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  testName The name of the test</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">run</span>: <span class="keyword">function</span>(<span class="variable">testName</span>) {
+    <span class="this">this</span>.<span class="variable">deferred</span>++;
+    <span class="keyword">var</span> <span class="variable">result</span> = <span class="keyword">new</span> <span class="this">this</span>.<span class="class">Result</span>(<span class="variable">testName</span>);
+
+    <span class="keyword">function</span> <span class="variable">showException</span>(<span class="variable">e</span>) {
+      <span class="keyword">if</span> (!!<span class="variable">e</span>.<span class="variable">stack</span>) {
+        <span class="variable">logger</span>.<span class="variable">display</span>(<span class="variable">e</span>.<span class="variable">stack</span>);
+      } <span class="keyword">else</span> {
+        <span class="variable">logger</span>.<span class="variable">display</span>(<span class="variable">e</span>);
+      }
+    }
+
+    <span class="keyword">if</span> (<span class="keyword">typeof</span> <span class="this">this</span>.<span class="variable">testObject</span>[<span class="variable">testName</span>] === <span class="string">'object'</span>) {
+      <span class="variable">logger</span>.<span class="variable">display</span>(<span class="string">'Running: '</span> + <span class="variable">testName</span>);
+      <span class="keyword">return</span> <span class="this">this</span>.<span class="variable">runTestObject</span>(<span class="this">this</span>.<span class="variable">testObject</span>[<span class="variable">testName</span>]);
+    }
+
+    <span class="keyword">try</span> {
+      <span class="this">this</span>.<span class="variable">testObject</span>[<span class="variable">testName</span>](<span class="this">this</span>);
+      <span class="this">this</span>.<span class="variable">passed</span> += <span class="number integer">1</span>;
+      <span class="variable">logger</span>.<span class="variable">pass</span>(<span class="variable">testName</span>);
+    } <span class="keyword">catch</span> (<span class="variable">e</span>) {
+      <span class="keyword">if</span> (<span class="variable">e</span>.<span class="variable">name</span> === <span class="string">'AssertionError'</span>) {
+        <span class="variable">result</span>.<span class="variable">message</span> = <span class="variable">e</span>.<span class="variable">toString</span>();
+        <span class="variable">logger</span>.<span class="variable">fail</span>(<span class="string">'Assertion failed in: '</span> + <span class="variable">testName</span>);
+        <span class="variable">showException</span>(<span class="variable">e</span>);
+        <span class="this">this</span>.<span class="variable">failed</span> += <span class="number integer">1</span>;
+      } <span class="keyword">else</span> {
+        <span class="variable">logger</span>.<span class="variable">error</span>(<span class="string">'Error in: '</span> + <span class="variable">testName</span>);
+        <span class="variable">showException</span>(<span class="variable">e</span>);
+        <span class="this">this</span>.<span class="variable">errors</span> += <span class="number integer">1</span>;
+      }
+    } <span class="keyword">finally</span> {
+      <span class="this">this</span>.<span class="variable">deferred</span>--;
+    }
+
+    <span class="this">this</span>.<span class="variable">results</span>.<span class="variable">push</span>(<span class="variable">result</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Defers a function and passes in the current Plants object.
+The passed-in function will get a method that must be called
+to signal completion of an asynchronous operation.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>Function</em>  callback A function that may not finish sequentially</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">defer</span>: <span class="keyword">function</span>(<span class="variable">callback</span>) {
+    <span class="this">this</span>.<span class="variable">deferred</span>++;
+    <span class="variable">callback</span>(<span class="variable">_</span>.<span class="variable">bind</span>(<span class="keyword">function</span>() {
+      <span class="this">this</span>.<span class="variable">deferred</span>--;
+
+      <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">deferred</span> === <span class="number integer">0</span>) {
+        <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">tests</span>.<span class="variable">length</span> &<span class="variable">gt</span>; <span class="number integer">0</span>) {
+          <span class="this">this</span>.<span class="variable">emit</span>(<span class="string">'next'</span>);
+        } <span class="keyword">else</span> {
+          <span class="this">this</span>.<span class="variable">emit</span>(<span class="string">'teardown'</span>);
+        }
+      }
+    }, <span class="this">this</span>));
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Displays all test results.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">report</span>: <span class="keyword">function</span>() {
+    <span class="variable">logger</span>.<span class="variable">pass</span>(<span class="string">'Passed: '</span> + <span class="this">this</span>.<span class="variable">passed</span>);
+    <span class="variable">logger</span>.<span class="variable">fail</span>(<span class="string">'Failed: '</span> + <span class="this">this</span>.<span class="variable">failed</span>);
+    <span class="variable">logger</span>.<span class="variable">error</span>(<span class="string">'Errors: '</span> + <span class="this">this</span>.<span class="variable">errors</span>);
+    <span class="variable">process</span>.<span class="variable">exit</span>(<span class="this">this</span>.<span class="variable">errors</span> &<span class="variable">gt</span>; <span class="number integer">0</span> || <span class="this">this</span>.<span class="variable">failed</span> &<span class="variable">gt</span>; <span class="number integer">0</span> ? <span class="number integer">1</span> : <span class="number integer">0</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs a file's tests.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  file The file name to run</p></li><li><p><strong>param</strong>: <em>Object</em>  tests An object containing methods that start with 'test', and may include 'setup' and 'teardown'</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">runFile</span>: <span class="keyword">function</span>(<span class="variable">file</span>, <span class="variable">tests</span>) {
+    <span class="variable">logger</span>.<span class="variable">display</span>(<span class="string">'Loaded file '</span> + <span class="variable">file</span>);
+    <span class="this">this</span>.<span class="variable">runTestObject</span>(<span class="variable">tests</span>);
+    <span class="variable">logger</span>.<span class="variable">display</span>(<span class="string">''</span>);
+  },</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs all tests.
+   </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">runAll</span>: <span class="keyword">function</span>() {
+    <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">deferred</span> &<span class="variable">gt</span>; <span class="number integer">0</span>) {
+      <span class="variable">setTimeout</span>(<span class="variable">_</span>.<span class="variable">bind</span>(<span class="keyword">function</span>() { <span class="this">this</span>.<span class="variable">runAll</span>(); }, <span class="this">this</span>), <span class="number integer">100</span>);
+    } <span class="keyword">else</span> <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">files</span>.<span class="variable">length</span> &<span class="variable">gt</span>; <span class="number integer">0</span>) {
+      <span class="keyword">var</span> <span class="variable">file</span> = <span class="this">this</span>.<span class="variable">files</span>.<span class="variable">shift</span>();
+      <span class="keyword">try</span> {
+        <span class="this">this</span>.<span class="variable">runFile</span>(<span class="variable">file</span>, <span class="variable">require</span>(<span class="variable">file</span>));
+        <span class="this">this</span>.<span class="variable">runAll</span>();
+      } <span class="keyword">catch</span> (<span class="variable">exception</span>) {
+        <span class="variable">error</span>(<span class="string">'Error in file: '</span> + <span class="variable">file</span>);
+        <span class="variable">logger</span>.<span class="variable">display</span>(<span class="variable">exception</span>);
+        <span class="variable">logger</span>.<span class="variable">display</span>(<span class="string">''</span>);
+        <span class="keyword">throw</span>(<span class="variable">exception</span>);
+      }
+    } <span class="keyword">else</span> <span class="keyword">if</span> (<span class="this">this</span>.<span class="variable">files</span>.<span class="variable">length</span> === <span class="number integer">0</span> &<span class="variable">amp</span>;&<span class="variable">amp</span>; <span class="this">this</span>.<span class="variable">deferred</span> === <span class="number integer">0</span>) {
+      <span class="this">this</span>.<span class="variable">report</span>();
+    }
+  }
+};
+
+<span class="variable">runner</span> = <span class="keyword">new</span> <span class="class">TestRunner</span>()
+
+<span class="keyword">function</span> <span class="variable">error</span>() {
+  <span class="variable">runner</span>.<span class="variable">errors</span>++;
+  <span class="keyword">return</span> <span class="variable">logger</span>.<span class="variable">error</span>.<span class="variable">apply</span>(<span class="this">this</span>, <span class="variable">arguments</span>);
+};</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Displays an error, available publicly.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message A message to display</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">exports</span>.<span class="variable">error</span> = <span class="variable">error</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Displays a message, available publicly.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message A message to display</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">exports</span>.<span class="variable">display</span> = <span class="variable">logger</span>.<span class="variable">display</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Runs tests, available publicly.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>String</em>  message A message to display</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="variable">exports</span>.<span class="variable">run</span> = <span class="keyword">function</span>(<span class="variable">files</span>) {
+  <span class="variable">runner</span>.<span class="variable">files</span> = <span class="variable">files</span>;
+  <span class="variable">runner</span>.<span class="variable">runAll</span>();
+};
+
+<span class="variable">exports</span>.<span class="variable">version</span> = <span class="variable">version</span>;
+</code></pre>
+</td>
+</tr>	</body>
+</html></tbody></table>
