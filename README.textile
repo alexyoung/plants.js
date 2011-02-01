@@ -38,6 +38,13 @@ h3. Documentation
 
 Documentation is available at "alexyoung.github.com/plants.js":http://alexyoung.github.com/plants.js.
 
+Examples can be found in <code>examples/</code>, including an Express app with Plants.js and Zombie.js tests.
+
+h3. To-do
+
+* Benchmarks
+* Assertion counts
+
 h3. License (MIT)
 
 Copyright (C) 2011 by  Alex R. Young
