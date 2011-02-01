@@ -137,7 +137,6 @@ code .this { color: #19469D; }</style>
 <pre><code>  var assert = require('assert'),
       counter = 0;
 
-  // Setup should run first
   exports['setup'] = function() {
     assert.equal(0, counter);
   };
@@ -158,7 +157,6 @@ code .this { color: #19469D; }</style>
 <pre><code>  var assert = require('assert'),
       counter = 0;
 
-  // Setup should run first
   exports['setup'] = function(plants) {
     plants.defer(function(next) {
       assert.equal(0, counter);

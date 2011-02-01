@@ -28,7 +28,6 @@ Setup and teardown is also supported:
       var assert = require('assert'),
           counter = 0;
 
-      // Setup should run first
       exports['setup'] = function() {
         assert.equal(0, counter);
       };
@@ -49,7 +48,6 @@ Some tests might take a while to run.  The `plants` object is passed into each t
       var assert = require('assert'),
           counter = 0;
 
-      // Setup should run first
       exports['setup'] = function(plants) {
         plants.defer(function(next) {
           assert.equal(0, counter);
