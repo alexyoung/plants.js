@@ -22,6 +22,18 @@ Write tests as a CommonJS module, then export them with method names that start 
 
 An error code will be returned if any tests fail.
 
+h3. Installation
+
+<code>npm install plants.js</code>
+
+h3. Usage
+
+<code>plants test/*.js</code>
+
+h3. Advanced Usage
+
+Plants.js has a <code>defer</code> method for dealing with asynchronous tasks.  The "documentation":http://alexyoung.github.com/plants.js has an example of this.
+
 h3. Documentation
 
 Documentation is available at "alexyoung.github.com/plants.js":http://alexyoung.github.com/plants.js.
