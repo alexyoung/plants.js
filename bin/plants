@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+var plants = require('../lib/plants'),
+    path = require('path'),
+    files = [],
+    args = process.argv.slice(2);
+
+require.paths.unshift('.');
+
+var usage = ''
+    + 'Usage: plants [options] <file ...>'
+    + '\n'
+    + '\nOptions:'
+    + '\n  -v, --version        Output version number'
+    + '\n  -h, --help           Display help information'
+    + '\n';
+
+while (args.length) {
+  var arg = args.shift();
+  switch (arg) {
+    case '-h':
+    case '--help':
+      console.log(usage + '\n');
+      process.exit(1);
+      break;
+    case '-v':
+    case '--version':
+      console.log(plants.version);
+      process.exit(1);
+      break;
+    default:
+      if (/\.js$/.test(arg)) {
+        files.push(arg);
+      }
+      break;
+  }
+}
+
+function run() {
+  if (!files.length) {
+    plants.error('Please specify some files to test.');
+    process.exit(1);
+  }
+
+  plants.run(files);
+}
+
+run(files);

@@ -1,0 +1,20 @@
+{
+  "name": "plants.js",
+  "description": "A Node test runner",
+  "version": "0.0.1",
+  "homepage": "https://github.com/alexyoung/plants.js",
+  "author": "Alex R. Young (http://alexyoung.org)",
+  "directories": {
+    "lib": "./lib"
+  },
+  "engines": {
+    "node": ">= 0.2.0"
+  },
+  "dependencies": {
+    "underscore": ">= 1.0.3"
+  },
+  "bin": {
+    "plants": "bin/plants"
+  }
+}
+
